@@ -5,7 +5,10 @@ api1.gs: dynamic column, with google create date, sort by google create date lat
   
 api2.gs : With authentication,with endpoint params config, dynamic column with google create date, sort by google create date, remove duplicate (Update old entires use with Oauth and endpoints param)          
 
-redditapi.gs : sort by google create date from latest to oldest , remove duplicate (Update old entires use)
+redditapi.gs : sort by google create date from latest to oldest , remove duplicate (Update old entires use)   
+
+redditapi2.gs : aggregate multiple subreddit parse, just stack no sort and de-duplication, yellow line to split every retrieval, list can have only 1 item (Append use) 
+
 
 
 
