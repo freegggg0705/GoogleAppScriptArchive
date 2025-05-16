@@ -1,5 +1,4 @@
-//RSS feed append only , not refreshing old items record 
-
+// RSS feed append only , not refreshing old items record , dynamic column creating, google create date creating (For append use)
 
 function appendFeedSortDedupe3() {
   // Get the spreadsheet and target sheet
