@@ -4,8 +4,8 @@ function scrapeNewsBlurRiverStories() {
   // Step 1: Authenticate with NewsBlur API
   var loginUrl = 'https://www.newsblur.com/api/login';
   var loginPayload = {
-    'username': 'freegggg0705@gmail.com', // Replace with your NewsBlur username
-    'password': '9qtdrmkp'  // Replace with your NewsBlur password
+    'username': '', // Replace with your NewsBlur username
+    'password': ''  // Replace with your NewsBlur password
   };
 
   var loginOptions = {
