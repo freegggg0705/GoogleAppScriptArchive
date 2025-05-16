@@ -7,7 +7,9 @@ api2.gs : With authentication,with endpoint params config, dynamic column with g
 
 redditapi.gs : sort by google create date from latest to oldest , remove duplicate (Update old entires use)   
 
-redditapi2.gs : aggregate multiple subreddit parse, just stack no sort and de-duplication, yellow line to split every retrieval, list can have only 1 item (Append use) 
+redditapi2.gs : aggregate multiple subreddit parse, just stack no sort and de-duplication, yellow line to split every retrieval, list can have only 1 item (Append use)     
+
+multiredditapi.gs: multireddit by default, yellow line split, no sort and de-duplicate (Append use only)
 
 
 
