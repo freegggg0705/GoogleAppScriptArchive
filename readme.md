@@ -11,7 +11,8 @@ redditapi2.gs : aggregate multiple subreddit parse, just stack no sort and de-du
 
 multiredditapi.gs: multireddit by default, yellow line split, no sort and de-duplicate (Append use only) (subreddit available)
 
-
+rss_and_parse_text.gs : append with google create date, then multiple sort: FIRST by LINK , SECOND by google create date from oldest to latest. Then copy and paste above row content column to itself if LINK column above equal itself, to reduce text parse workload.       
+Then, for all empty cell left in content column, perform regex parse. Finally, sort by google_create_date from latest to oldest, then remove duplicate. (Update old entires with parsing use)
 
 
    
