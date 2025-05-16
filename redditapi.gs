@@ -1,4 +1,4 @@
-// redditapi.gs : sort by google create date from latest to oldest , remove duplicate (Update old entires use)
+// redditapi.gs : sort by google create date from latest to oldest , remove duplicate, recursion for non duplicate item until maxattempt (Update old entires use) (multireddit available) 
 
 
 
@@ -9,7 +9,7 @@
  * Configuration object for easy modification
  */
 const CONFIG = {
-  subreddit: "r/bing",
+  subreddit: "r/bing", //subreddit: "user/apprehensivead8691/m/multi1",
   timeFilter: "week", // Options: hour, day, week, month, year, all
   limit: 10,         // Number of posts to fetch per API call
   maxAttempts: 5,    // Maximum number of API query attempts
