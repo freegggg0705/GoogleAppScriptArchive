@@ -1,4 +1,4 @@
-//api2.gs With authentication,with endpoint params config, with google create date, sort by google create date, remove duplicate (Update old entires use with Oauth and endpoints param)
+//api2.gs With authentication,with endpoint params config, dynamic column with google create date, sort by google create date, remove duplicate (Update old entires use with Oauth and endpoints param)   
 
 function scrapeNewsBlurRiverStories() {
   // Step 1: Authenticate with NewsBlur API
