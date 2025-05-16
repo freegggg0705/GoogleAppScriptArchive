@@ -17,5 +17,6 @@ Then, for all empty cell left in content column, perform regex parse. Finally, s
 html_parse1.gs: parse successfully for 吾愛破解 by loop of attempts. (Aggressive Parse static html with heavy malfuncition code use)
 
 Puppeteer_demo for showcase firefoxgggg in replit execution successful once route (Dynamic site scrape use)
+Beautiful soup demo for scraping text from static html (For static html parse)
 
    
