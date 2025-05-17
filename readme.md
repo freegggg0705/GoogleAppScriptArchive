@@ -21,7 +21,7 @@ Beautifulsoup_demo.md : for scraping text from static html (For static html pars
 Praw_reddit_python_demo.md : Basic python Oauth for reddit api demo (Reddit by Python use case)    
 
 EmailToInstapaper_bulk_python.md : Send a list of url to instapaper for later saved full article to evernote, one by one script in python by Gmail Oauth (For save static html content use)
-> For view only, use [todolistTorss](https://rsstodolist.eu/) for newsblur mobile for open in fullpage in panel function for the urls 
+> For view only, use [todolistTorss](https://rsstodolist.eu/) for newsblur mobile for open in fullpage in panel function for the urls     
 > Or you can try https://site-analyzer.pro/soft/batch-url-scraper/ but remember to check for possibility of malicious and better use in sandbox
 
 
