@@ -24,7 +24,8 @@ EmailToInstapaper_bulk_python.md : Send a list of url to instapaper for later sa
 > For view only, use [todolistTorss](https://rsstodolist.eu/) for newsblur mobile for open in fullpage in panel function for the urls     
 > Or you can try https://site-analyzer.pro/soft/batch-url-scraper/ but remember to check for possibility of malicious and better use in sandbox
 
-JINA.gs scrape text for a list of urls with proxy(need authentication api key trim from 3e for real api, btw it is free just in case) and json output https://jina.ai/ (For multiple urls scrape use) 
+JINA.gs scrape text for a list of urls with proxy(need authentication api key trim from 3e for real api, btw it is free just in case) and json output https://jina.ai/ (For multiple urls scrape use)    
+> Alternatively, use wallabag host in PC 
 
 
 
