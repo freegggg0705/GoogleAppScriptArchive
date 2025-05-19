@@ -28,8 +28,11 @@ JINA.gs scrape text for a list of urls with proxy(need authentication api key tr
 > Alternatively, use wallabag host in PC   
 > Alternatively, use rssodolist with morss.it
 >
-JINA_GAS.gs using JINA fetch html then use Google appscript to fetch the html through regex (For 403 blocking google appscript politepol and fetchrss and without usable to use)    
+JINA_GAS.gs using JINA fetch html then use Google appscript to fetch the html through regex (For 403 blocking google appscript politepol and fetchrss and without usable to use)         
 
+
+
+newsblurAPIfetch.gs : fetch articles text by newsblur api upon article hash by gonna need decoding process line by line for chinese (For fetch articles saved in newsblur use)
 
 
 
