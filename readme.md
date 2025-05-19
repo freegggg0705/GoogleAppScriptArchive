@@ -26,7 +26,12 @@ EmailToInstapaper_bulk_python.md : Send a list of url to instapaper for later sa
 
 JINA.gs scrape text for a list of urls with proxy(need authentication api key trim from 3e for real api, btw it is free just in case) and json output https://jina.ai/ (For multiple urls scrape use)    
 > Alternatively, use wallabag host in PC   
-> Alternatively, use rssodolist with morss.it 
+> Alternatively, use rssodolist with morss.it
+>
+JINA_GAS.gs using JINA fetch html then use Google appscript to fetch the html through regex (For 403 blocking google appscript politepol and fetchrss and without usable to use)    
+
+
+
 
 
 
