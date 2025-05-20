@@ -32,8 +32,8 @@ JINA_GAS.gs using JINA fetch html then use Google appscript to fetch the html th
 
 newsblurAPIfetch.gs : fetch articles text by newsblur api upon article hash by gonna need decoding process line by line for chinese (For fetch articles saved in newsblur use)     
 
-WhatsappParserGitCLone.md: About Installation Whatsapp Parser by Gitclone instruction archive
+WhatsappParserGitCLone.md: About Installation Whatsapp Parser by Gitclone instruction archive     
 
-
+Wallabag.md:About installation of wallabag Instruction
 
    
