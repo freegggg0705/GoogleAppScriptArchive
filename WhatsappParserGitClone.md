@@ -1,7 +1,7 @@
 //About Installation Whatsapp Parser by Gitclone instruction archive
 
 >for whatsapp parser like installation problem occur and to resolve restriction (particularly: npm --version)
-
+```
 Prerequisites
 Node.js and npm:
 Install Node.js (version 16 or later recommended) and npm. Download from https://nodejs.org/ or use a package manager like nvm.
@@ -79,3 +79,4 @@ text
 Copy
 Compiled successfully! You can now view whatsapp-chat-parser-website in the browser. Local:            http://localhost:3000
 Your default browser should automatically open to http://localhost:3000. If not, open a browser and navigate to that URL.
+```
