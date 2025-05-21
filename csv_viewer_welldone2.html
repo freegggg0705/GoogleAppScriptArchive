@@ -1,0 +1,1136 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSV Chat Viewer</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <style>
+    :root {
+      --card-width: 400px;
+      --card-height: 300px;
+      --title-font-size: 16px;
+      --title-height-collapsed: 24px;
+      --content-height: 200px;
+      --content-height-collapsed: 48px;
+      --title-bg: 255, 255, 255;
+      --title-opacity: 1;
+      --content-bg: 255, 255, 255;
+      --content-opacity: 1;
+      --meta-bg: 255, 255, 255;
+      --meta-opacity: 1;
+      --card-bg: 255, 255, 255;
+      --card-bg-opacity: 1;
+      --page-bg: 229, 221, 213; /* Default: #e5ddd5 */
+      --page-bg-opacity: 1;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body, #root {
+      height: 100%;
+      font-family: sans-serif;
+      background-color: rgba(var(--page-bg), var(--page-bg-opacity));
+    }
+
+    @media (prefers-color-scheme: dark) {
+      html, body, #root {
+        background-color: rgba(13, 20, 24, var(--page-bg-opacity)); /* #0d1418 */
+        color: #ccc;
+      }
+    }
+
+    a {
+      color: #07bc4c;
+      text-decoration: none;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+    }
+
+    .header {
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .dropzone {
+      flex: 1;
+      border: 2px dashed #ccc;
+      border-radius: 10px;
+      padding: 20px;
+      cursor: pointer;
+      background-color: #fafafa;
+    }
+
+    .dropzone.highlighted {
+      background-color: #eee;
+      border-color: #07bc4c;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .dropzone {
+        border-color: #666;
+        background-color: #222;
+      }
+      .dropzone.highlighted {
+        background-color: #333a3d;
+      }
+    }
+
+    .dropzone input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+    }
+
+    .content-container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .message-viewer {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    .message-list {
+      list-style: none;
+      padding: 0;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .message-card {
+      position: relative;
+      width: var(--card-width);
+      height: var(--card-height);
+      margin: 1rem auto;
+      background-color: rgba(var(--card-bg), var(--card-bg-opacity));
+      border-radius: 12px;
+      padding: 8px 10px;
+      box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s ease;
+    }
+
+    .message-card.collapsed {
+      height: var(--title-height-collapsed);
+    }
+
+    .message-card.collapsed .content {
+      height: var(--content-height-collapsed); /* Changed to height */
+      overflow: hidden;
+    }
+
+    .message-card .content {
+      max-height: var(--content-height);
+      overflow: auto;
+    }
+
+    .message-card.collapsed .meta {
+      max-height: 0;
+      overflow: hidden;
+    }
+
+    .message-card.collapsed .title {
+      max-height: var(--title-height-collapsed);
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .message-card .title {
+      font-weight: bold;
+      font-size: var(--title-font-size);
+      background-color: rgba(var(--title-bg), var(--title-opacity));
+      padding: 4px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .message-card .content {
+      background-color: rgba(var(--content-bg), var(--content-opacity));
+      padding: 4px 0;
+      border-bottom: 1px solid #eee;
+      transition: height 0.3s ease; /* Changed to height */
+    }
+
+    .message-card .meta {
+      font-size: 75%;
+      opacity: 0.6;
+      background-color: rgba(var(--meta-bg), var(--meta-opacity));
+      padding: 4px 0;
+    }
+
+    .message-card .meta div {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .message-card .index {
+      position: absolute;
+      top: -0.5em;
+      right: -0.5em;
+      font-size: 10px;
+      padding: 0 7px;
+      border-radius: 99px;
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      background-color: rgba(var(--card-bg), var(--card-bg-opacity));
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .message-card .index:hover {
+      background-color: #07bc4c;
+      color: white;
+    }
+
+    .ghost-card {
+      height: var(--card-height);
+      visibility: hidden;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .message-card {
+        background-color: rgba(var(--card-bg), var(--card-bg-opacity));
+        color: #f1f1f2;
+      }
+      .message-card .index {
+        border-color: rgba(255, 255, 255, 0.1);
+      }
+      .message-card .title, .message-card .content {
+        border-color: #444;
+      }
+    }
+
+    .settings-sidebar, .content-sidebar {
+      width: 280px;
+      background-color: white;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      overflow-y: auto;
+      transition: transform 0.3s ease;
+      z-index: 20;
+      padding: 1rem;
+    }
+
+    .settings-sidebar {
+      left: 0;
+      transform: translateX(-100%);
+    }
+
+    .settings-sidebar.open {
+      transform: translateX(0);
+    }
+
+    .content-sidebar {
+      right: 0;
+      transform: translateX(100%);
+    }
+
+    .content-sidebar.open {
+      transform: translateX(0);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .settings-sidebar, .content-sidebar {
+        background-color: #262d31;
+      }
+    }
+
+    .content-sidebar ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .content-sidebar li {
+      padding: 8px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+    }
+
+    .content-sidebar li:hover {
+      background-color: #f0f0f0;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .content-sidebar li {
+        border-bottom: 1px solid #444;
+      }
+      .content-sidebar li:hover {
+        background-color: #333a3d;
+      }
+    }
+
+    .sidebar-form, .sidebar-fieldset {
+      margin-bottom: 1rem;
+    }
+
+    .sidebar-field {
+      margin-bottom: 0.5rem;
+    }
+
+    .sidebar-label {
+      display: block;
+      margin-bottom: 0.25rem;
+      opacity: 0.8;
+    }
+
+    .sidebar-input, .sidebar-select {
+      width: 100%;
+      padding: 0.3rem;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 4px;
+      background-color: #fafafa;
+    }
+
+    .sidebar-submit {
+      width: 100%;
+      padding: 0.5rem;
+      border: none;
+      border-radius: 4px;
+      background-color: #07bc4c;
+      color: white;
+      cursor: pointer;
+    }
+
+    .sidebar-reset {
+      width: 100%;
+      padding: 0.5rem;
+      border: none;
+      border-radius: 4px;
+      background-color: #ff4c4c;
+      color: white;
+      cursor: pointer;
+      margin-top: 0.5rem;
+    }
+
+    .toggle-checkbox {
+      width: 44px;
+      height: 22px;
+      padding: 2px;
+      border-radius: 22px;
+      background-color: #aaa;
+      cursor: pointer;
+      appearance: none;
+    }
+
+    .toggle-checkbox:checked {
+      background-color: #07bc4c;
+    }
+
+    .toggle-checkbox::before {
+      content: '';
+      display: block;
+      width: 18px;
+      height: 18px;
+      background-color: white;
+      border-radius: 50%;
+      transition: transform 0.3s;
+    }
+
+    .toggle-checkbox:checked::before {
+      transform: translateX(22px);
+    }
+
+    .size-control, .color-control {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .size-control input, .color-control input[type="number"] {
+      width: 60px;
+      text-align: center;
+    }
+
+    .size-control button {
+      width: 30px;
+      height: 30px;
+      border: none;
+      background-color: #07bc4c;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .menu-button {
+      position: fixed;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background-color: #07bc4c;
+      color: white;
+      border: none;
+      cursor: pointer;
+      z-index: 30;
+    }
+
+    .settings-open {
+      left: 1rem;
+      bottom: 1rem;
+    }
+
+    .content-open {
+      right: 1rem;
+      bottom: 1rem;
+    }
+
+    .menu-close {
+      position: absolute;
+      top: 0;
+      right: 0;
+      background-color: transparent;
+      opacity: 0.5;
+    }
+
+    .menu-close::before, .menu-close::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 2px;
+      background-color: black;
+      top: 50%;
+      left: 50%;
+    }
+
+    .menu-close::before {
+      transform: translate(-50%, -50%) rotate(45deg);
+    }
+
+    .menu-close::after {
+      transform: translate(-50%, -50%) rotate(135deg);
+    }
+
+    .overlay {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      width: 100%;
+      background-color: black;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      z-index: 10;
+    }
+
+    .overlay.active {
+      opacity: 0.2;
+      pointer-events: auto;
+    }
+
+    .info {
+      text-align: center;
+      padding: 8px 10px;
+      border-radius: 6px;
+      background-color: #07bc4c;
+      color: white;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="container">
+      <header class="header">
+        <form id="dropzone-form" class="dropzone">
+          <input type="file" id="dropzone" accept=".csv">
+          <label for="dropzone">Click or drag and drop a CSV file</label>
+        </form>
+      </header>
+      <div class="content-container">
+        <aside class="settings-sidebar" id="settings-sidebar">
+          <button class="menu-close" onclick="toggleSidebar('settings', false)">Close</button>
+          <div>
+            <form class="sidebar-form" onsubmit="applyRowFilter(event)">
+              <fieldset class="sidebar-fieldset">
+                <legend>Filter by Rows</legend>
+                <div class="sidebar-field">
+                  <label class="sidebar-label" for="row-start">Start</label>
+                  <input class="sidebar-input" id="row-start" type="number" min="1" placeholder="1">
+                </div>
+                <div class="sidebar-field">
+                  <label class="sidebar-label" for="row-end">End</label>
+                  <input class="sidebar-input" id="row-end" type="number" min="1">
+                </div>
+                <div class="sidebar-field">
+                  <button class="sidebar-submit" type="submit">Apply</button>
+                </div>
+              </fieldset>
+            </form>
+            <form class="sidebar-form" onsubmit="applyDateFilter(event)">
+              <fieldset class="sidebar-fieldset">
+                <legend>Filter by Date</legend>
+                <div class="sidebar-field">
+                  <label class="sidebar-label" for="date-column">Date Column</label>
+                  <select class="sidebar-select" id="date-column"></select>
+                </div>
+                <div class="sidebar-field">
+                  <label class="sidebar-label" for="date-start">Start</label>
+                  <input class="sidebar-input" id="date-start" type="date">
+                </div>
+                <div class="sidebar-field">
+                  <label class="sidebar-label" for="date-end">End</label>
+                  <input class="sidebar-input" id="date-end" type="date">
+                </div>
+                <div class="sidebar-field">
+                  <button class="sidebar-submit" type="submit">Apply</button>
+                </div>
+                <div class="sidebar-field">
+                  <button class="sidebar-reset" type="button" onclick="resetDateFilter()">Reset Date Filter</button>
+                </div>
+              </fieldset>
+            </form>
+            <form class="sidebar-form" onsubmit="applyTextFilter(event)">
+              <fieldset class="sidebar-fieldset">
+                <legend>Filter by Text/Regex</legend>
+                <div class="sidebar-field">
+                  <label class="sidebar-label" for="text-column">Column</label>
+                  <select class="sidebar-select" id="text-column"></select>
+                </div>
+                <div class="sidebar-field">
+                  <label class="sidebar-label" for="text-filter">Text/Regex</label>
+                  <input class="sidebar-input" id="text-filter" type="text" placeholder="Enter text or regex">
+                </div>
+                <div class="sidebar-field">
+                  <label class="sidebar-label">
+                    <input type="checkbox" id="use-regex"> Use Regex
+                  </label>
+                </div>
+                <div class="sidebar-field">
+                  <button class="sidebar-submit" type="submit">Apply</button>
+                </div>
+              </fieldset>
+            </form>
+            <fieldset class="sidebar-fieldset" id="column-settings">
+              <legend>Column Settings</legend>
+              <div id="column-display-settings"></div>
+            </fieldset>
+            <fieldset class="sidebar-fieldset">
+              <legend>Content Sidebar Title</legend>
+              <div class="sidebar-field">
+                <label class="sidebar-label" for="single-title-column">Select Column for Content Sidebar</label>
+                <select class="sidebar-select" id="single-title-column" onchange="updateContentSidebar()">
+                  <option value="">Use Title Columns</option>
+                </select>
+              </div>
+            </fieldset>
+            <fieldset class="sidebar-fieldset">
+              <legend>Page Appearance</legend>
+              <div class="sidebar-field">
+                <label class="sidebar-label">Page Background Color</label>
+                <input class="sidebar-input" id="page-bg" type="color" value="#e5ddd5" onchange="updateColors()">
+              </div>
+              <div class="sidebar-field">
+                <label class="sidebar-label">Page Background Opacity</label>
+                <div class="color-control">
+                  <button type="button" onclick="adjustOpacity('page-bg-opacity', -0.1)">↓</button>
+                  <input class="sidebar-input" id="page-bg-opacity" type="number" step="0.1" min="0.3" max="1" value="1">
+                  <button type="button" onclick="adjustOpacity('page-bg-opacity', 0.1)">↑</button>
+                </div>
+              </div>
+            </fieldset>
+            <fieldset class="sidebar-fieldset">
+              <legend>Card Appearance</legend>
+              <div class="sidebar-field">
+                <label class="sidebar-label">Title Background Color</label>
+                <input class="sidebar-input" id="title-bg" type="color" value="#ffffff" onchange="updateColors()">
+              </div>
+              <div class="sidebar-field">
+                <label class="sidebar-label">Title Opacity</label>
+                <div class="color-control">
+                  <button type="button" onclick="adjustOpacity('title-opacity', -0.1)">↓</button>
+                  <input class="sidebar-input" id="title-opacity" type="number" step="0.1" min="0.3" max="1" value="1">
+                  <button type="button" onclick="adjustOpacity('title-opacity', 0.1)">↑</button>
+                </div>
+              </div>
+              <div class="sidebar-field">
+                <label class="sidebar-label">Content Background Color</label>
+                <input class="sidebar-input" id="content-bg" type="color" value="#ffffff" onchange="updateColors()">
+              </div>
+              <div class="sidebar-field">
+                <label class="sidebar-label">Content Opacity</label>
+                <div class="color-control">
+                  <button type="button" onclick="adjustOpacity('content-opacity', -0.1)">↓</button>
+                  <input class="sidebar-input" id="content-opacity" type="number" step="0.1" min="0.3" max="1" value="1">
+                  <button type="button" onclick="adjustOpacity('content-opacity', 0.1)">↑</button>
+                </div>
+              </div>
+              <div class="sidebar-field">
+                <label class="sidebar-label">Meta Background Color</label>
+                <input class="sidebar-input" id="meta-bg" type="color" value="#ffffff" onchange="updateColors()">
+              </div>
+              <div class="sidebar-field">
+                <label class="sidebar-label">Meta Opacity</label>
+                <div class="color-control">
+                  <button type="button" onclick="adjustOpacity('meta-opacity', -0.1)">↓</button>
+                  <input class="sidebar-input" id="meta-opacity" type="number" step="0.1" min="0.3" max="1" value="1">
+                  <button type="button" onclick="adjustOpacity('meta-opacity', 0.1)">↑</button>
+                </div>
+              </div>
+              <div class="sidebar-field">
+                <label class="sidebar-label">Card Background Color</label>
+                <input class="sidebar-input" id="card-bg" type="color" value="#ffffff" onchange="updateColors()">
+              </div>
+              <div class="sidebar-field">
+                <label class="sidebar-label">Card Background Opacity</label>
+                <div class="color-control">
+                  <button type="button" onclick="adjustOpacity('card-bg-opacity', -0.1)">↓</button>
+                  <input class="sidebar-input" id="card-bg-opacity" type="number" step="0.1" min="0.3" max="1" value="1">
+                  <button type="button" onclick="adjustOpacity('card-bg-opacity', 0.1)">↑</button>
+                </div>
+              </div>
+            </fieldset>
+            <div class="sidebar-field">
+              <label class="sidebar-label">Title Font Size (px)</label>
+              <div class="size-control">
+                <button type="button" onclick="adjustSize('title-font-size', -10)">↓</button>
+                <input class="sidebar-input" id="title-font-size" type="number" value="16" min="12" max="240">
+                <button type="button" onclick="adjustSize('title-font-size', 10)">↑</button>
+              </div>
+            </div>
+            <div class="sidebar-field">
+              <label class="sidebar-label">Card Width (px)</label>
+              <div class="size-control">
+                <button type="button" onclick="adjustSize('cardទ0card-width', -100)">↓</button>
+                <input class="sidebar-input" id="card-width" type="number" value="400" min="300" max="6000">
+                <button type="button" onclick="adjustSize('card-width', 100)">↑</button>
+              </div>
+            </div>
+            <div class="sidebar-field">
+              <label class="sidebar-label">Card Height (px)</label>
+              <div class="size-control">
+                <button type="button" onclick="adjustSize('card-height', -100)">↓</button>
+                <input class="sidebar-input" id="card-height" type="number" value="300" min="200" max="6000">
+                <button type="button" onclick="adjustSize('card-height', 100)">↑</button>
+              </div>
+            </div>
+            <div class="sidebar-field">
+              <label class="sidebar-label">Title Height (Collapsed, px)</label>
+              <div class="size-control">
+                <button type="button" onclick="adjustSize('title-height-collapsed', -10)">↓</button>
+                <input class="sidebar-input" id="title-height-collapsed" type="number" value="24" min="20" max="400">
+                <button type="button" onclick="adjustSize('title-height-collapsed', 10)">↑</button>
+              </div>
+            </div>
+            <div class="sidebar-field">
+              <label class="sidebar-label">Content Height (Expanded, px)</label>
+              <div class="size-control">
+                <button type="button" onclick="adjustSize('content-height', -100)">↓</button>
+                <input class="sidebar-input" id="content-height" type="number" value="200" min="100" max="5000">
+                <button type="button" onclick="adjustSize('content-height', 100)">↑</button>
+              </div>
+            </div>
+            <div class="sidebar-field">
+              <label class="sidebar-label">Content Height (Collapsed, px)</label>
+              <div class="size-control">
+                <button type="button" onclick="adjustSize('content-height-collapsed', -10)">↓</button>
+                <input class="sidebar-input" id="content-height-collapsed" type="number" value="48" min="20" max="1000">
+                <button type="button" onclick="adjustSize('content-height-collapsed', 10)">↑</button>
+              </div>
+            </div>
+            <div class="sidebar-field">
+              <label class="sidebar-label">
+                <input type="checkbox" id="collapse-all" onchange="toggleCollapseAll()"> Collapse All Cards
+              </label>
+            </div>
+          </div>
+        </aside>
+        <div class="message-viewer">
+          <div class="info" id="info"></div>
+          <ul class="message-list" id="message-list"></ul>
+        </div>
+        <aside class="content-sidebar" id="content-sidebar">
+          <button class="menu-close" onclick="toggleSidebar('content', false)">Close</button>
+          <div id="content-list">No data loaded</div>
+        </aside>
+      </div>
+      <button class="menu-button settings-open" onclick="toggleSidebar('settings', true)">Menu</button>
+      <button class="menu-button content-open" onclick="toggleSidebar('content', true)">Titles</button>
+      <button class="overlay" id="overlay" onclick="closeAllSidebars()"></button>
+    </div>
+  </div>
+  <script>
+    var gk_isXlsx = false;
+    var gk_xlsxFileLookup = {};
+    var gk_fileData = {};
+
+    function filledCell(cell) {
+      return cell !== '' && cell != null;
+    }
+
+    function loadFileData(filename) {
+      if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+        try {
+          var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+          var firstSheetName = workbook.SheetNames[0];
+          var worksheet = workbook.Sheets[firstSheetName];
+          var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+          var filteredData = jsonData.filter(row => row.some(filledCell));
+          var headerRowIndex = filteredData.findIndex((row, index) =>
+            row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+          );
+          if (headerRowIndex === -1 || headerRowIndex > 25) {
+            headerRowIndex = 0;
+          }
+          var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
+          csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+          return csv;
+        } catch (e) {
+          console.error(e);
+          return "";
+        }
+      }
+      return gk_fileData[filename] || "";
+    }
+
+    let messages = [];
+    let filteredMessages = [];
+    let columns = [];
+    let isCollapsedAll = false;
+    const cardsPerLoad = 50;
+    const columnSettings = {};
+    let singleTitleColumn = '';
+
+    function toggleSidebar(type, open) {
+      const sidebar = document.getElementById(`${type}-sidebar`);
+      const overlay = document.getElementById('overlay');
+      sidebar.classList.toggle('open', open);
+      overlay.classList.toggle('active', open);
+    }
+
+    function closeAllSidebars() {
+      toggleSidebar('settings', false);
+      toggleSidebar('content', false);
+    }
+
+    function toggleCollapseAll() {
+      isCollapsedAll = !isCollapsedAll;
+      renderMessages();
+    }
+
+    function adjustSize(id, delta) {
+      const input = document.getElementById(id);
+      const value = parseInt(input.value) + delta;
+      const min = parseInt(input.min);
+      const max = parseInt(input.max);
+      input.value = Math.max(min, Math.min(max, value));
+      document.documentElement.style.setProperty(`--${id}`, input.value + 'px');
+      renderMessages();
+    }
+
+    function adjustOpacity(id, delta) {
+      const input = document.getElementById(id);
+      const value = parseFloat(input.value) + delta;
+      const min = parseFloat(input.min);
+      const max = parseFloat(input.max);
+      input.value = Math.max(min, Math.min(max, value)).toFixed(1);
+      document.documentElement.style.setProperty(`--${id}`, input.value);
+      renderMessages();
+    }
+
+    function updateColors() {
+      const hexToRgb = hex => {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `${r}, ${g}, ${b}`;
+      };
+      ['title-bg', 'content-bg', 'meta-bg', 'card-bg', 'page-bg'].forEach(id => {
+        const value = document.getElementById(id).value;
+        document.documentElement.style.setProperty(`--${id}`, hexToRgb(value));
+      });
+      renderMessages();
+    }
+
+    function initializeDropzone() {
+      const dropzone = document.getElementById('dropzone-form');
+      const input = document.getElementById('dropzone');
+      dropzone.addEventListener('dragenter', () => dropzone.classList.add('highlighted'));
+      dropzone.addEventListener('dragover', e => e.preventDefault());
+      dropzone.addEventListener('dragleave', () => dropzone.classList.remove('highlighted'));
+      dropzone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropzone.classList.remove('highlighted');
+        processFile(e.dataTransfer.files[0]);
+      });
+      input.addEventListener('change', () => processFile(input.files[0]));
+    }
+
+    function processFile(file) {
+      if (!file || file.type !== 'text/csv') {
+        alert('Please upload a valid CSV file');
+        return;
+      }
+      Papa.parse(file, {
+        header: true,
+        complete: result => {
+          columns = result.meta.fields.filter(col => col && col.trim());
+          if (columns.length === 0) {
+            alert('No valid columns found in CSV');
+            return;
+          }
+          messages = result.data
+            .filter(row => Object.keys(row).some(key => row[key] != null))
+            .map((row, index) => ({ ...row, index }));
+          filteredMessages = [...messages];
+          columns.forEach(col => {
+            columnSettings[col] = { show: true, placement: col.toLowerCase().includes('content') ? 'content' : col.toLowerCase().includes('title') ? 'title' : 'meta' };
+          });
+          singleTitleColumn = columns[0] || '';
+          initializeFilters();
+          renderMessages();
+          updateContentSidebar();
+        },
+        error: err => alert(`Error parsing CSV: ${err}`),
+      });
+    }
+
+    function initializeFilters() {
+      const dateSelect = document.getElementById('date-column');
+      const textSelect = document.getElementById('text-column');
+      const singleTitleSelect = document.getElementById('single-title-column');
+      [dateSelect, textSelect, singleTitleSelect].forEach(select => {
+        select.innerHTML = '<option value="">Select Column</option>' +
+          columns.map(col => `<option value="${col}" ${col === singleTitleColumn ? 'selected' : ''}>${col}</option>`).join('');
+      });
+      document.getElementById('row-end').placeholder = Math.min(100, messages.length).toString();
+
+      const columnSettingsDiv = document.getElementById('column-display-settings');
+      columnSettingsDiv.innerHTML = columns.map(col => `
+        <div class="sidebar-field">
+          <label class="sidebar-label">
+            <input type="checkbox" id="show-${col}" ${columnSettings[col].show ? 'checked' : ''} onchange="updateColumnSettings('${col}')"> Show ${col}
+          </label>
+          <div class="sidebar-field">
+            <label class="sidebar-label">
+              <input type="radio" name="${col}-placement" value="title" ${columnSettings[col].placement === 'title' ? 'checked' : ''} onchange="updateColumnSettings('${col}')"> Title
+            </label>
+            <label class="sidebar-label">
+              <input type="radio" name="${col}-placement" value="content" ${columnSettings[col].placement === 'content' ? 'checked' : ''} onchange="updateColumnSettings('${col}')"> Content
+            </label>
+            <label class="sidebar-label">
+              <input type="radio" name="${col}-placement" value="meta" ${columnSettings[col].placement === 'meta' ? 'checked' : ''} onchange="updateColumnSettings('${col}')"> Meta
+            </label>
+          </div>
+        </div>
+      `).join('');
+
+      updateContentSidebar();
+      updateInfo();
+    }
+
+    function updateColumnSettings(col) {
+      const show = document.getElementById(`show-${col}`).checked;
+      const placement = document.querySelector(`input[name="${col}-placement"]:checked`).value;
+      columnSettings[col] = { show, placement };
+      renderMessages();
+      updateContentSidebar();
+    }
+
+    function applyRowFilter(e) {
+      e.preventDefault();
+      const start = parseInt(document.getElementById('row-start').value) || 1;
+      const end = parseInt(document.getElementById('row-end').value) || Math.min(100, messages.length);
+      if (start < 1 || end < start || end > messages.length) {
+        alert(`Invalid row range. Start: 1 to ${messages.length}, End: ${start} to ${messages.length}`);
+        return;
+      }
+      filteredMessages = messages.slice(start - 1, end);
+      renderMessages();
+      updateContentSidebar();
+      updateInfo();
+      closeAllSidebars();
+    }
+
+    function parseCustomDate(value) {
+      if (!value) return null;
+      if (/^\d{8}$/.test(value)) {
+        const year = value.slice(0, 4);
+        const month = value.slice(4, 6);
+        const day = value.slice(6, 8);
+        value = `${year}-${month}-${day}`;
+      }
+      const date = new Date(value);
+      return isNaN(date) ? null : date;
+    }
+
+    function resetDateFilter() {
+      document.getElementById('date-column').value = '';
+      document.getElementById('date-start').value = '';
+      document.getElementById('date-end').value = '';
+      filteredMessages = [...messages];
+      renderMessages();
+      updateContentSidebar();
+      updateInfo();
+      closeAllSidebars();
+    }
+
+    function applyDateFilter(e) {
+      e.preventDefault();
+      const column = document.getElementById('date-column').value;
+      const start = new Date(document.getElementById('date-start').value);
+      const end = new Date(document.getElementById('date-end').value);
+      if (!column || isNaN(start) || isNaN(end)) {
+        alert('Please select a date column and valid dates');
+        return;
+      }
+      end.setDate(end.getDate() + 1);
+      filteredMessages = messages.filter(msg => {
+        const date = parseCustomDate(msg[column]);
+        return date && !isNaN(date) && date >= start && date <= end;
+      });
+      if (filteredMessages.length === 0) {
+        alert('No valid dates found in selected column. Use the Reset Date Filter button to clear the filter.');
+      }
+      renderMessages();
+      updateContentSidebar();
+      updateInfo();
+      closeAllSidebars();
+    }
+
+    function applyTextFilter(e) {
+      e.preventDefault();
+      const column = document.getElementById('text-column').value;
+      const filter = document.getElementById('text-filter').value.trim();
+      const useRegex = document.getElementById('use-regex').checked;
+      if (!column || !filter) {
+        filteredMessages = [...messages];
+        renderMessages();
+        updateContentSidebar();
+        updateInfo();
+        closeAllSidebars();
+        return;
+      }
+      try {
+        const regex = useRegex ? new RegExp(filter, 'i') : null;
+        filteredMessages = messages.filter(msg => {
+          const value = msg[column]?.toString().toLowerCase() || '';
+          return regex ? regex.test(value) : value.includes(filter.toLowerCase());
+        });
+        renderMessages();
+        updateContentSidebar();
+        updateInfo();
+        closeAllSidebars();
+      } catch (err) {
+        alert(`Invalid regex: ${err.message}`);
+      }
+    }
+
+    function updateContentSidebar() {
+      const list = document.getElementById('content-list');
+      const singleTitleColumn = document.getElementById('single-title-column').value;
+      if (filteredMessages.length === 0) {
+        list.innerHTML = '<div>No data to display</div>';
+        return;
+      }
+      const escapeHtml = text => text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+      let titleContent;
+      if (singleTitleColumn) {
+        titleContent = filteredMessages.map(msg => {
+          return `<li onclick="scrollToMessage(${msg.index})">${escapeHtml(msg[singleTitleColumn] || 'No ' + singleTitleColumn)}</li>`;
+        }).join('');
+      } else {
+        const titleCols = columns.filter(col => columnSettings[col]?.show && columnSettings[col].placement === 'title');
+        if (titleCols.length > 0) {
+          titleContent = filteredMessages.map(msg => {
+            const titleText = titleCols
+              .map(col => escapeHtml(msg[col] || 'No ' + col))
+              .join(' - ');
+            return `<li onclick="scrollToMessage(${msg.index})">${titleText}</li>`;
+          }).join('');
+        } else {
+          titleContent = '<div>No title columns selected</div>';
+        }
+      }
+      list.innerHTML = `<ul>${titleContent}</ul>`;
+    }
+
+    function scrollToMessage(index) {
+      const card = document.getElementById(`message-${index}`);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (isCollapsedAll) {
+          card.classList.remove('collapsed');
+        }
+      }
+    }
+
+    function toggleCard(e) {
+      if (e.target.classList.contains('index')) {
+        e.currentTarget.classList.toggle('collapsed');
+      }
+    }
+
+    function renderMessages() {
+      const list = document.getElementById('message-list');
+      list.innerHTML = '';
+      let observer;
+
+      if (window.currentObserver) {
+        window.currentObserver.disconnect();
+      }
+
+      const escapeHtml = text => text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+
+      observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting && !entry.target.classList.contains('ghost-card')) {
+            const index = parseInt(entry.target.dataset.index);
+            const start = Math.max(0, index - cardsPerLoad / 2);
+            const end = Math.min(filteredMessages.length, index + cardsPerLoad / 2);
+            for (let i = start; i < end; i++) {
+              if (!document.getElementById(`message-${i}`)) {
+                const msg = filteredMessages[i];
+                const li = document.createElement('li');
+                li.id = `message-${i}`;
+                li.className = `message-card ${isCollapsedAll ? 'collapsed' : ''}`;
+                li.dataset.index = i;
+                const titleHtml = columns
+                  .filter(col => columnSettings[col]?.show && columnSettings[col].placement === 'title')
+                  .map(col => `<div class="title">${escapeHtml(msg[col] || '')}</div>`)
+                  .join('');
+                const contentHtml = columns
+                  .filter(col => columnSettings[col]?.show && columnSettings[col].placement === 'content')
+                  .map(col => `<div>${escapeHtml(msg[col] || '')}</div>`)
+                  .join('');
+                const metaHtml = columns
+                  .filter(col => columnSettings[col]?.show && columnSettings[col].placement === 'meta')
+                  .map(col => `<div>${col}: ${escapeHtml(msg[col] || '')}</div>`)
+                  .join('');
+                li.innerHTML = `
+                  <div class="index">${(i + 1).toLocaleString()}</div>
+                  ${titleHtml}
+                  <div class="content">${contentHtml}</div>
+                  <div class="meta">${metaHtml}</div>
+                `;
+                li.addEventListener('click', toggleCard);
+                list.appendChild(li);
+              }
+            }
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { root: document.querySelector('.message-viewer'), threshold: 0.1 });
+
+      window.currentObserver = observer;
+
+      const initialLoad = Math.min(cardsPerLoad, filteredMessages.length);
+      for (let i = 0; i < initialLoad; i++) {
+        const msg = filteredMessages[i];
+        const li = document.createElement('li');
+        li.id = `message-${i}`;
+        li.className = `message-card ${isCollapsedAll ? 'collapsed' : ''}`;
+        li.dataset.index = i;
+        const titleHtml = columns
+          .filter(col => columnSettings[col]?.show && columnSettings[col].placement === 'title')
+          .map(col => `<div class="title">${escapeHtml(msg[col] || '')}</div>`)
+          .join('');
+        const contentHtml = columns
+          .filter(col => columnSettings[col]?.show && columnSettings[col].placement === 'content')
+          .map(col => `<div>${escapeHtml(msg[col] || '')}</div>`)
+          .join('');
+        const metaHtml = columns
+          .filter(col => columnSettings[col]?.show && columnSettings[col].placement === 'meta')
+          .map(col => `<div>${col}: ${escapeHtml(msg[col] || '')}</div>`)
+          .join('');
+        li.innerHTML = `
+          <div class="index">${(i + 1).toLocaleString()}</div>
+          ${titleHtml}
+          <div class="content">${contentHtml}</div>
+          <div class="meta">${metaHtml}</div>
+        `;
+        li.addEventListener('click', toggleCard);
+        list.appendChild(li);
+      }
+
+      if (filteredMessages.length > initialLoad) {
+        const sentinel = document.createElement('li');
+        sentinel.dataset.index = initialLoad;
+        list.appendChild(sentinel);
+        observer.observe(sentinel);
+      }
+
+      for (let i = 0; i < 5; i++) {
+        const ghost = document.createElement('li');
+        ghost.className = 'ghost-card';
+        list.appendChild(ghost);
+      }
+
+      updateInfo();
+    }
+
+    function updateInfo() {
+      const info = document.getElementById('info');
+      if (filteredMessages.length === messages.length) {
+        info.textContent = `Showing all ${messages.length.toLocaleString()} messages`;
+      } else {
+        info.textContent = `Showing ${filteredMessages.length.toLocaleString()} of ${messages.length.toLocaleString()} messages`;
+      }
+    }
+
+    initializeDropzone();
+  </script>
+</body>
+</html>
