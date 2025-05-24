@@ -36,4 +36,23 @@ WhatsappParserGitCLone.md: About Installation Whatsapp Parser by Gitclone instru
 
 Wallabag.md:About installation of wallabag Instruction     
 
-csv_viewer_welldone2.html : Csv viewer based on WhatsappChat parser with functionality 
+csv_viewer_welldone2.html : Csv viewer based on WhatsappChat parser with functionality     
+
+linuxdo_json.md : using puppeteer to fetch json file with pagination in general, 14 and tag ai with timefilter daily and weekly.      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
