@@ -1,4 +1,4 @@
-//whatsapp-chat-parser-website - GGGG and freeGGGG amended - 25052025.md : Add grid view and collapse text thread with text font and text thread height and width adjustment.
+//WhatsappParser-website - GGGG and freeGGGG amended - 25052025.md : Add grid view and collapse text thread with text font and text thread height and width adjustment.
 https://grok.com/share/c2hhcmQtMg%3D%3D_3ac67505-4868-4537-926c-a4572326c79b
 ```
 
