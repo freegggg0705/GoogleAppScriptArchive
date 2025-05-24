@@ -40,9 +40,10 @@ Wallabag.md:About installation of wallabag Instruction
 csv_viewer_welldone2.html : Csv viewer based on WhatsappChat parser with functionality     
 
 linuxdo_python_selenium_rss.md : Use Selenium in python to fetch rss from linuxdo
-
+linuxdo_python_direct_text_parse.md : Use selenium in python to fetch thread by beautifulsoup
+> Python with selenium cannot fetch json items, only irrelevant. Blocked by cloudflare to get that part deleted
 linuxdo_json.md : using puppeteer to fetch json file with pagination in general, 14 and tag ai with timefilter daily and weekly.      
-linuxdo_run_scripts.md : run scripts in win11 altogether    
+linuxdo_nodejs_run_nodejs_scripts.md : run scripts in win11 altogether    
 
 
 
