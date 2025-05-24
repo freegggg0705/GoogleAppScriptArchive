@@ -1,4 +1,4 @@
-//linuxdo_python_selenium.md : Use Selenium in python to fetch rss from linuxdo, which is protected heavily by cloudflare. Fail to retrieve even rss file by politepol, fetchrss or appscript or JINA. Without selenium, python only fetch nothing relevant.
+//linuxdo_python_selenium_rss.md : Use Selenium in python to fetch rss from linuxdo, which is protected heavily by cloudflare. Fail to retrieve even rss file by politepol, fetchrss or appscript or JINA. Without selenium, python only fetch nothing relevant.
 
 ```
 from selenium import webdriver
