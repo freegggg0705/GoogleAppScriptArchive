@@ -39,6 +39,7 @@ Wallabag.md:About installation of wallabag Instruction
 csv_viewer_welldone2.html : Csv viewer based on WhatsappChat parser with functionality     
 
 linuxdo_json.md : using puppeteer to fetch json file with pagination in general, 14 and tag ai with timefilter daily and weekly.      
+linuxdo_run_scripts.md : run scripts in win11 altogether    
 
 
 
