@@ -1,0 +1,542 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Media Gallery</title>
+  <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHsgJ/TDj4AAAAAElFTkSuQmCC">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    html {
+      font-family: sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+      color-scheme: dark light;
+    }
+
+    body {
+      margin: 0;
+      background-color: #e5ddd5;
+      color: #333;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #0d1418;
+        color: #ccc;
+      }
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .upload-bar {
+      display: block;
+      border-radius: 10px;
+      padding: 20px;
+      border: 2px dashed #ccc;
+      cursor: pointer;
+      background-color: #fafafa;
+      text-align: center;
+      max-width: 600px;
+      width: 100%;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .upload-bar {
+        border-color: #666;
+        background-color: #222;
+      }
+    }
+
+    .upload-label {
+      margin: 0;
+      display: block;
+      cursor: pointer;
+    }
+
+    .upload-label:hover,
+    .upload-label:focus-within,
+    .upload-label.hover {
+      background-color: #eee;
+      border-color: #07bc4c;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .upload-label:hover,
+      .upload-label:focus-within,
+      .upload-label.hover {
+        background-color: #333a3d;
+      }
+    }
+
+    input[type="file"] {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+    }
+
+    .menu-open-button {
+      position: fixed;
+      width: 44px;
+      height: 44px;
+      left: 1rem;
+      bottom: 1rem;
+      border: none;
+      border-radius: 50%;
+      background-color: #07bc4c;
+      color: white;
+      cursor: pointer;
+      font-size: 0;
+    }
+
+    .menu-open-button::after {
+      content: '';
+      display: block;
+      position: absolute;
+      width: 16px;
+      height: 2px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      box-shadow: 0 -5px 0 white, 0 5px 0 white;
+    }
+
+    .overlay {
+      position: fixed;
+      width: 100%;
+      top: 0;
+      bottom: 0;
+      background-color: black;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      border: none;
+    }
+
+    .overlay.active {
+      opacity: 0.2;
+      pointer-events: auto;
+    }
+
+    .sidebar {
+      position: fixed;
+      width: 280px;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      background-color: white;
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+      z-index: 20;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .sidebar {
+        background-color: #262d31;
+      }
+    }
+
+    .sidebar.open {
+      transform: translateX(0);
+    }
+
+    .sidebar-content {
+      position: absolute;
+      top: 44px;
+      left: 0;
+      bottom: 0;
+      right: 0;
+      padding: 1rem;
+      overflow-y: auto;
+      border-top: 1px solid #eee;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .sidebar-content {
+        border-color: #444;
+      }
+    }
+
+    .menu-close-button {
+      position: absolute;
+      width: 44px;
+      height: 44px;
+      top: 0;
+      right: 0;
+      background-color: transparent;
+      border: none;
+      opacity: 0.5;
+      transition: opacity 0.3s ease;
+      font-size: 0;
+    }
+
+    .menu-close-button:hover,
+    .menu-close-button:focus {
+      opacity: 1;
+    }
+
+    .menu-close-button::before,
+    .menu-close-button::after {
+      content: '';
+      display: block;
+      position: absolute;
+      width: 20px;
+      height: 2px;
+      top: 50%;
+      left: 50%;
+      transform-origin: 50% 50%;
+      background-color: black;
+    }
+
+    .menu-close-button::before {
+      transform: translate(-50%, -50%) rotate(45deg);
+    }
+
+    .menu-close-button::after {
+      transform: translate(-50%, -50%) rotate(135deg);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .menu-close-button::before,
+      .menu-close-button::after {
+        background-color: white;
+      }
+    }
+
+    .settings {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .field {
+      margin-top: 1rem;
+    }
+
+    .field label {
+      display: block;
+      opacity: 0.8;
+      cursor: pointer;
+    }
+
+    input[type="checkbox"] {
+      --toggle-width: 44px;
+      --toggle-height: 22px;
+      --toggle-padding: 2px;
+      appearance: none;
+      margin: 0;
+      padding: var(--toggle-padding);
+      height: var(--toggle-height);
+      width: var(--toggle-width);
+      background-color: #aaa;
+      border-radius: var(--toggle-height);
+      cursor: pointer;
+    }
+
+    input[type="checkbox"]::before {
+      content: '';
+      aspect-ratio: 1;
+      background-color: white;
+      border-radius: 50%;
+      transition: transform 0.3s;
+    }
+
+    input[type="checkbox"]:checked {
+      background-color: #07bc4c;
+    }
+
+    input[type="checkbox"]:checked::before {
+      transform: translateX(calc(var(--toggle-width) - var(--toggle-padding) * 2 - (var(--toggle-height) - var(--toggle-padding) * 2)));
+    }
+
+    .button-group {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.375rem;
+    }
+
+    .adjust-button {
+      width: 40px;
+      height: 30px;
+      border: none;
+      border-radius: 4px;
+      background-color: #07bc4c;
+      color: white;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    main.grid {
+      flex-grow: 1;
+      padding: 1rem;
+      display: grid;
+      grid-template-columns: repeat(var(--grid-columns, 3), 1fr);
+      grid-template-rows: repeat(var(--grid-rows, 3), auto);
+      gap: 1rem;
+      justify-items: center;
+      align-items: stretch;
+    }
+
+    main img {
+      display: block;
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+      border-radius: 6px;
+      box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <form id="upload-form" class="upload-bar">
+        <input type="file" id="image-upload" accept="image/jpeg,image/png,image/gif" multiple hidden>
+        <label for="image-upload" class="upload-label">Click to upload images or drag and drop</label>
+      </form>
+    </header>
+    <button id="menu-open-button" class="menu-open-button">Open Settings</button>
+    <button class="overlay" hidden></button>
+    <aside class="sidebar">
+      <button id="menu-close-button" class="menu-close-button">Close Settings</button>
+      <div class="sidebar-content">
+        <div class="settings">
+          <h2>Settings</h2>
+          <div class="field">
+            <label for="toggle-setting">Toggle Example Setting</label>
+            <input type="checkbox" id="toggle-setting">
+          </div>
+          <div class="field">
+            <label>Grid Columns: <span id="grid-columns-value">3</span></label>
+            <div class="button-group">
+              <button type="button" class="adjust-button" data-action="grid-columns-down">↓</button>
+              <button type="button" class="adjust-button" data-action="grid-columns-up">↑</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Grid Rows: <span id="grid-rows-value">3</span></label>
+            <div class="button-group">
+              <button type="button" class="adjust-button" data-action="grid-rows-down">↓</button>
+              <button type="button" class="adjust-button" data-action="grid-rows-up">↑</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+    <main id="media-container" class="grid"></main>
+  </div>
+  <script type="module">
+    console.log('Script loaded');
+
+    const state = {
+      gridColumns: 3,
+      gridRows: 3
+    };
+
+    function processImageFiles(files) {
+      console.log('Processing image files:', files.length);
+      const mediaContainer = document.getElementById('media-container');
+      if (!mediaContainer) {
+        console.error('Media container not found');
+        alert('Error: Media container not found');
+        return;
+      }
+      mediaContainer.innerHTML = '';
+
+      for (const file of files) {
+        if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
+          console.error('Invalid file type:', file.type);
+          alert(`Invalid file: ${file.name}. Please upload JPEG, PNG, or GIF images.`);
+          continue;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = document.createElement('img');
+          img.src = reader.result;
+          img.alt = 'Uploaded image';
+          mediaContainer.appendChild(img);
+          console.log(`Image displayed: ${file.name}`);
+        };
+        reader.onerror = () => {
+          console.error(`Error reading file: ${file.name}`, reader.error);
+          alert(`Error reading file: ${file.name}`);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function updateGridView() {
+      const mediaContainer = document.getElementById('media-container');
+      if (!mediaContainer) {
+        console.error('Media container not found in updateGridView');
+        return;
+      }
+      document.documentElement.style.setProperty('--grid-columns', state.gridColumns);
+      document.documentElement.style.setProperty('--grid-rows', state.gridRows);
+    }
+
+    // Settings panel handlers
+    const openButton = document.getElementById('menu-open-button');
+    const closeButton = document.getElementById('menu-close-button');
+    const overlay = document.querySelector('.overlay');
+    const sidebar = document.querySelector('.sidebar');
+
+    if (!openButton || !closeButton || !overlay || !sidebar) {
+      console.error('One or more DOM elements not found:', { openButton, closeButton, overlay, sidebar });
+    }
+
+    openButton?.addEventListener('click', () => {
+      console.log('Open button clicked');
+      sidebar.classList.add('open');
+      overlay.classList.add('active');
+    });
+
+    closeButton?.addEventListener('click', () => {
+      console.log('Close button clicked');
+      sidebar.classList.remove('open');
+      overlay.classList.remove('active');
+    });
+
+    overlay?.addEventListener('click', () => {
+      console.log('Overlay clicked');
+      sidebar.classList.remove('open');
+      overlay.classList.remove('active');
+    });
+
+    // Image upload handlers
+    const uploadForm = document.getElementById('upload-form');
+    const imageInput = document.getElementById('image-upload');
+
+    uploadForm?.addEventListener('submit', e => {
+      e.preventDefault();
+      console.log('Image form submitted');
+    });
+
+    imageInput?.addEventListener('change', e => {
+      console.log('Image input changed');
+      const files = Array.from(e.target.files);
+      if (files.length > 0) {
+        processImageFiles(files);
+      } else {
+        console.error('No files selected');
+        alert('Please select one or more image files.');
+      }
+    });
+
+    uploadForm?.addEventListener('dragover', e => {
+      e.preventDefault();
+      console.log('Dragover on upload form');
+      e.target.querySelector('.upload-label')?.classList.add('hover');
+    });
+
+    uploadForm?.addEventListener('dragleave', e => {
+      e.preventDefault();
+      console.log('Dragleave on upload form');
+      e.target.querySelector('.upload-label')?.classList.remove('hover');
+    });
+
+    uploadForm?.addEventListener('drop', e => {
+      e.preventDefault();
+      console.log('Drop on upload form');
+      e.target.querySelector('.upload-label')?.classList.remove('hover');
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length > 0) {
+        processImageFiles(files);
+      } else {
+        console.error('No files dropped');
+        alert('Please drop one or more image files.');
+      }
+    });
+
+    // Grid adjustment handlers
+    document.querySelectorAll('.adjust-button').forEach(button => {
+      button.addEventListener('click', () => {
+        const action = button.dataset.action;
+        console.log('Adjust button clicked:', action);
+        if (action === 'grid-columns-up') {
+          state.gridColumns = Math.min(state.gridColumns + 1, 10);
+        } else if (action === 'grid-columns-down') {
+          state.gridColumns = Math.max(state.gridColumns - 1, 1);
+        } else if (action === 'grid-rows-up') {
+          state.gridRows = Math.min(state.gridRows + 1, 10);
+        } else if (action === 'grid-rows-down') {
+          state.gridRows = Math.max(state.gridRows - 1, 1);
+        }
+        document.getElementById('grid-columns-value').textContent = state.gridColumns;
+        document.getElementById('grid-rows-value').textContent = state.gridRows;
+        updateGridView();
+      });
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        console.log('Escape key pressed');
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+      }
+    });
+
+    console.log('Initializing grid view');
+    updateGridView();
+  </script>
+</body>
+</html>
