@@ -1,4 +1,4 @@
-//linuxdo_run_scripts.md : run scripts in win11 altogether
+//linuxdo_nodejs_run_nodejs_scripts.md : run scripts in win11 altogether
 
 ```
 const { execSync } = require('child_process');
